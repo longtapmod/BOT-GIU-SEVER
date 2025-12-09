@@ -1,13 +1,15 @@
-// package.json
 {
-  "name": "aternos-render-bot",
+  "name": "aternos-replit-bot",
   "version": "1.0.0",
-  "description": "Mineflayer bot for Aternos server on Render",
+  "description": "Mineflayer bot for Aternos server on Replit",
   "main": "index.js",
   "scripts": {
     "start": "node index.js"
   },
   "dependencies": {
     "mineflayer": "^4.20.0"
+  },
+  "engines": {
+    "node": ">=16.x"
   }
 }
