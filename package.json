@@ -1,15 +1,15 @@
 {
-  "name": "aternos-replit-bot",
+  "name": "aternos-1-21-bot",
   "version": "1.0.0",
-  "description": "Mineflayer bot for Aternos server on Replit",
+  "description": "Mineflayer bot 1.21 cho Aternos - Replit",
   "main": "index.js",
   "scripts": {
     "start": "node index.js"
   },
   "dependencies": {
-    "mineflayer": "^4.20.0"
+    "mineflayer": "^4.22.0"
   },
   "engines": {
-    "node": ">=16.x"
+    "node": ">=18.x"
   }
 }
