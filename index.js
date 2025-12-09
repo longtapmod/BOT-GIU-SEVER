@@ -1,6 +1,9 @@
 // index.js - BOT MINECRAFT 24/7 CHO ATERNOS (Replit)
 // Bản FULL đã test ổn định hơn 6 tháng không kick
 // Chỉ cần thay 3 dòng HOST, PORT, USERNAME là xong!
+// Đã fix: Lỗi chat 1.21 → dùng 1.20.4
+//         Lỗi throttle → reconnect delay thông minh
+//         In reason kick đúng cách
 
 const http = require('http');
 const mineflayer = require('mineflayer');
@@ -8,10 +11,10 @@ const mineflayer = require('mineflayer');
 // ====================== CẤU HÌNH SERVER (THAY 3 DÒNG NÀY) ======================
 const HOST = 'dailongsever111.aternos.me';   // Thay bằng host của bạn
 const PORT = 14483;                          // Thay bằng port hiện tại của server
-const USERNAME = 'BotChongTrom';            // Tên bot bạn muốn
+const USERNAME = 'BotChongTrom';             // Tên bot bạn muốn
 // =============================================================================
 
-console.log(`\nĐang kết nối ${USERNAME} → ${HOST}:${PORT} (phiên bản 1.21)`);
+console.log(`\nĐang kết nối ${USERNAME} → ${HOST}:${PORT} (phiên bản 1.20.4)`);
 
 // Web server giữ Replit không ngủ
 const PORT_UPTIME = process.env.PORT || 8080;
@@ -28,8 +31,8 @@ function createBot() {
     host: HOST,
     port: PORT,
     username: USERNAME,
-    version: '1.21',
-    auth: 'offline' // bắt buộc với Aternos cracked
+    version: '1.20.4',  // Fix lỗi chat format của 1.21
+    auth: 'offline'     // Bắt buộc với Aternos cracked
   });
 
   attachEvents();
@@ -56,10 +59,15 @@ function attachEvents() {
     }
   });
 
-  // Bị kick
-  bot.on('kicked', (reason) => {
-    console.log(`\nBị kick: ${reason}`);
-    reconnect();
+  // Bị kick (bao gồm cả throttle)
+  bot.on('kicked', (reason, loggedIn) => {
+    if (loggedIn) {
+      console.log(`\nBị kick: ${JSON.stringify(reason)}`);
+      if (reason.toString().includes('throttled') || reason.toString().includes('throttle')) {
+        console.log('Server đang chặn reconnect quá nhanh → sẽ tăng thời gian chờ');
+      }
+      reconnect();
+    }
   });
 
   // Lỗi kết nối
@@ -68,12 +76,15 @@ function attachEvents() {
     if (err.message.includes('authenticate')) {
       console.log('Server đang Online-mode=true → bot không vào được. Vào Aternos tắt Online-mode đi nhé!');
     }
+    if (err.message.includes('throttled') || err.message.includes('ECONNRESET')) {
+      console.log('Lỗi do reconnect quá nhanh → tăng thời gian chờ');
+    }
     reconnect();
   });
 
-  // Ngắt kết nối
+  // Ngắt kết nối bình thường
   bot.on('end', () => {
-    console.log('\nBot mất kết nối. Đang thử lại sau 7 giây...');
+    console.log('\nBot mất kết nối → đang reconnect với delay thông minh...');
     reconnect();
   });
 }
@@ -111,9 +122,24 @@ function startAntiAFK() {
   setInterval(antiAFK, 30000); // lặp mỗi 30 giây
 }
 
-// ====================== TỰ ĐỘNG RECONNECT ======================
+// ====================== TỰ ĐỘNG RECONNECT THÔNG MINH (CHỐNG THROTTLE) ======================
+let reconnectDelay = 15000; // bắt đầu từ 15 giây
+
 function reconnect() {
-  setTimeout(createBot, 7000);
+  // Nếu bị throttle → tăng thời gian chờ dần dần (tối đa 2 phút)
+  if (reconnectDelay < 120000) {
+    reconnectDelay = reconnectDelay + Math.floor(Math.random() * 30000); // +0-30s
+  }
+
+  const waitTime = reconnectDelay + Math.floor(Math.random() * 10000); // thêm random 0-10s để tránh bị detect spam
+
+  console.log(`\nBị throttle! Đang đợi ${Math.round(waitTime/1000)} giây trước khi reconnect...`);
+  
+  setTimeout(() => {
+    console.log(`Đang reconnect sau ${Math.round(waitTime/1000)} giây chờ...`);
+    reconnectDelay = 15000; // reset về 15s khi reconnect thành công
+    createBot();
+  }, waitTime);
 }
 
 // Khởi động bot lần đầu
