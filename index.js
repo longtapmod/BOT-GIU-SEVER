@@ -1,235 +1,130 @@
-// index.js - BOT CHƠI NHƯ NGƯỜI THẬT: ĐÀO KHOÁNG + XÂY NHÀ (Aternos 1.21 - Replit)
-// Bản ngon nhất 2025 - Đã test chạy ổn định, không kick, xây nhà thành công, fix lỗi chat
+// index.js - 2 BOT AFK ĐỨNG YÊN GIỮ SERVER ONLINE 24/7 (Aternos - Replit)
+// Bản đơn giản ổn định, không crash chat 1.21, chống AFK nhẹ (quay đầu + nhảy), reconnect thông minh
 
 const http = require('http');
 const mineflayer = require('mineflayer');
-const { pathfinder, Movements, goals } = require('mineflayer-pathfinder');
-const collectBlock = require('mineflayer-collectblock').plugin;
-const { Builder } = require('mineflayer-builder');
 
+// ====================== CẤU HÌNH 2 BOT ======================
 const HOST = 'dailongsever111.aternos.me';
 const PORT = 14483;
-const USERNAME = 'BotChongTrom';
+const BOT1_NAME = 'BotChongTrom';
+const BOT2_NAME = 'Bot2ChongTrom'; // Tên bot 2 (thay nếu muốn)
+// ============================================================
 
-let bot;
-let mcData;
+console.log(`\nĐang kết nối 2 bot → ${HOST}:${PORT} (1.20.4 - ổn định)`);
 
 // Web server giữ Replit không ngủ
-const PORT_UPTIME = process.env.PORT || 8080;
+const PORT_UPTIME = process.env.PORT || 5000;
 http.createServer((req, res) => {
   res.writeHead(200, { 'Content-Type': 'text/plain; charset=utf-8' });
-  res.end('Bot Minecraft đang chạy 24/7 - Ping bằng UptimeRobot nhé!');
-}).listen(PORT_UPTIME, () => console.log(`Web server chạy trên cổng ${PORT_UPTIME}`));
+  res.end('2 Bot AFK đang chạy 24/7 - Ping UptimeRobot nhé!');
+}).listen(PORT_UPTIME, '0.0.0.0', () => console.log(`Web server chạy trên cổng ${PORT_UPTIME}`));
 
-function createBot() {
-  bot = mineflayer.createBot({
+// Tạo 2 bot
+let bot1, bot2;
+
+function createBot1() {
+  bot1 = mineflayer.createBot({
     host: HOST,
     port: PORT,
-    username: USERNAME,
-    version: '1.21',
+    username: BOT1_NAME,
+    version: '1.20.4',  // Ổn định, không lỗi chat
     auth: 'offline'
   });
-
-  bot.loadPlugin(pathfinder);
-  bot.loadPlugin(collectBlock);
-  bot.loadPlugin(Builder);
-
-  mcData = require('minecraft-data')(bot.version);
-
-  attachEvents();
+  attachEvents(bot1, BOT1_NAME);
 }
 
-function attachEvents() {
-  bot.once('spawn', () => {
-    console.log(`\nBot ${bot.username} đã vào server! Bắt đầu chơi như người thật...`);
-    const defaultMove = new Movements(bot, mcData);
-    defaultMove.allowParkour = true;
-    defaultMove.canDig = true;
-    defaultMove.scafoldingBlocks = () => bot.inventory.items().filter(i => i.name.includes('plank'));
-    bot.pathfinder.setMovements(defaultMove);
+function createBot2() {
+  bot2 = mineflayer.createBot({
+    host: HOST,
+    port: PORT,
+    username: BOT2_NAME,
+    version: '1.20.4',
+    auth: 'offline'
+  });
+  attachEvents(bot2, BOT2_NAME);
+}
 
-    startAntiAFK();
-    setTimeout(startRealPlayerBehavior, 8000); // delay 8s để load chunk ổn định
+function attachEvents(bot, name) {
+  bot.once('spawn', () => {
+    console.log(`\nBot ${name} đã vào server! Bật chống AFK...`);
+    startAntiAFK(bot);
   });
 
+  // Chat đơn giản (bỏ qua lỗi 1.21)
   bot.on('chat', (username, message) => {
     try {
       if (username === bot.username) return;
-      console.log(`[Chat] <${username}> ${message}`);
+      console.log(`[Chat ${name}] <${username}> ${message}`);
       const msg = message.toLowerCase();
-      if (msg.includes('chao') || msg.includes('hi') || msg.includes('hello')) {
-        bot.chat(`Chào ${username}! Bot đang bận xây nhà với đào khoáng đây ❤️`);
+      if (msg.includes('chao') || msg.includes('hi')) {
+        bot.chat(`Chào ${username}! ${name} vẫn online ❤️`);
       }
-      if (msg.includes('bot')) {
-        bot.chat(`Bot vẫn online nè ${username} ư ư`);
-      }
-    } catch (err) {
-      console.log('Bỏ qua lỗi parsing chat: ' + err.message);
-    }
-  });
-
-  bot.on('message', (jsonMsg) => {
-    try {
-      console.log('Message: ' + jsonMsg.toString());
-    } catch (err) {
-      console.log('Bỏ qua lỗi message format: ' + err.message);
-    }
+    } catch (err) {}
   });
 
   bot.on('error', err => {
-    if (err.message.includes('chat format') || err.message.includes('ChatMessage') || err.message.includes('object Object')) {
-      console.log('Bỏ qua lỗi chat 1.21 quen thuộc');
+    if (err.message.includes('chat') || err.message.includes('format')) {
+      console.log(`Bỏ qua lỗi chat cho ${name}`);
       return;
     }
-    console.log(`Lỗi khác: ${err.message}`);
-    reconnect();
+    console.log(`Lỗi ${name}: ${err.message}`);
+    reconnectBot(bot, name);
   });
 
   bot.on('kicked', reason => {
-    console.log(`Bị kick: ${JSON.stringify(reason)}`);
-    reconnect();
+    console.log(`${name} bị kick: ${JSON.stringify(reason)}`);
+    reconnectBot(bot, name);
   });
 
   bot.on('end', () => {
-    console.log('Mất kết nối → reconnect...');
-    reconnect();
+    console.log(`${name} mất kết nối → reconnect...`);
+    reconnectBot(bot, name);
   });
 }
 
-// ====================== HÀNH VI NHƯ NGƯỜI THẬT ======================
-async function startRealPlayerBehavior() {
-  try {
-    await collectWood(60);      // lấy nhiều gỗ hơn để chắc chắn đủ xây
-    await mineOres();
-    await buildSimpleHouse();
-    bot.chat('Xong hết việc rồi! Bot nghỉ ngơi tí rồi làm tiếp nha ư ư');
-    // Lặp lại sau 10 phút nếu muốn farm liên tục
-    setTimeout(startRealPlayerBehavior, 600000);
-  } catch (err) {
-    console.log('Lỗi hành vi: ' + err.message);
-    bot.chat('Bot bị lỗi nhỏ, nghỉ tí rồi làm lại...');
-    setTimeout(startRealPlayerBehavior, 30000); // thử lại sau 30s
-  }
+// ====================== CHỐNG AFK NHẸ (ĐỨNG YÊN + QUAY ĐẦU + NHẢY) ======================
+function startAntiAFK(bot) {
+  setInterval(() => {
+    if (!bot.entity) return;
+
+    // Quay đầu ngẫu nhiên
+    bot.look(bot.entity.yaw + Math.random() * 2 - 1, bot.entity.pitch + Math.random() * 0.5 - 0.25);
+
+    // Nhảy nhẹ
+    bot.setControlState('jump', true);
+    setTimeout(() => bot.setControlState('jump', false), 300);
+
+    // Di chuyển nhẹ
+    const dir = ['forward', 'back', 'left', 'right'][Math.floor(Math.random() * 4)];
+    bot.setControlState(dir, true);
+    setTimeout(() => bot.clearControlStates(), 800);
+  }, 25000); // Mỗi 25 giây - không quá lộ
 }
 
-// Thu thập gỗ
-async function collectWood(amount) {
-  bot.chat('Đang tìm cây chặt gỗ...');
-  const logIds = ['oak_log', 'birch_log', 'spruce_log', 'jungle_log', 'acacia_log', 'dark_oak_log', 'mangrove_log']
-    .map(name => mcData.blocksByName[name]?.id)
-    .filter(Boolean);
+// ====================== RECONNECT THÔNG MINH ======================
+let reconnectDelay1 = 15000, reconnectDelay2 = 15000;
 
-  let log = bot.findBlock({ matching: logIds, maxDistance: 128 });
-  if (!log) {
-    bot.chat('Không thấy cây nào gần đây, bỏ qua chặt gỗ...');
-    return;
+function reconnectBot(bot, name) {
+  const delay = (name === BOT1_NAME ? reconnectDelay1 : reconnectDelay2);
+  if (delay < 120000) {
+    if (name === BOT1_NAME) reconnectDelay1 += Math.random() * 30000;
+    else reconnectDelay2 += Math.random() * 30000;
   }
+  const waitTime = delay + Math.random() * 10000;
+  console.log(`${name} đợi ${Math.round(waitTime/1000)}s reconnect...`);
 
-  try {
-    await bot.collectBlock.collect(log, { count: amount });
-    bot.chat('Chặt gỗ xong, ngon lành!');
-  } catch (err) {
-    console.log('Lỗi chặt cây: ' + err.message);
-  }
-}
-
-// Đào khoáng
-async function mineOres() {
-  bot.chat('Bắt đầu đào khoáng...');
-  const oreNames = [
-    'diamond_ore', 'deepslate_diamond_ore',
-    'iron_ore', 'deepslate_iron_ore',
-    'gold_ore', 'deepslate_gold_ore',
-    'copper_ore', 'deepslate_copper_ore',
-    'coal_ore', 'deepslate_coal_ore'
-  ];
-
-  for (const name of oreNames) {
-    const id = mcData.blocksByName[name]?.id;
-    if (!id) continue;
-    const ore = bot.findBlock({ matching: id, maxDistance: 80 });
-    if (ore) {
-      try {
-        await bot.collectBlock.collect(ore, { count: 15 });
-        bot.chat(`Đào được ${name.replace('_ore', '').replace('deepslate_', '')}!`);
-      } catch (err) {
-        console.log('Lỗi đào: ' + err.message);
-      }
-    }
-  }
-}
-
-// Xây nhà
-async function buildSimpleHouse() {
-  bot.chat('Chuẩn bị xây nhà gỗ 5x5...');
-  const plankId = mcData.blocksByName.oak_planks.id || mcData.blocksByName.birch_planks.id;
-  if (!plankId || bot.inventory.count(plankId) < 80) {
-    bot.chat('Không đủ gỗ xây nhà (cần ~80 planks), bỏ qua xây...');
-    return;
-  }
-
-  const startPos = bot.entity.position.offset(8, 0, 8); // xa hơn tí tránh chồng spawn
-  try {
-    await bot.pathfinder.goto(new goals.GoalNear(startPos.x, startPos.y, startPos.z, 2));
-  } catch (err) {}
-
-  for (let x = 0; x < 5; x++) {
-    for (let z = 0; z < 5; z++) {
-      for (let y = 0; y < 5; y++) { // cao 5 để có mái chắc
-        if (y === 0 || y === 4 || x === 0 || x === 4 || z === 0 || z === 4) {
-          if (y === 1 && x === 2 && z === 0) continue; // cửa dưới
-          if (y === 2 && x === 2 && z === 0) continue; // cửa trên
-          const pos = startPos.offset(x, y, z);
-          const block = bot.blockAt(pos);
-          if (block && block.name === 'air') {
-            try {
-              await bot.builder.place(plankId, pos);
-            } catch (err) {}
-          }
-        }
-      }
-    }
-  }
-  bot.chat('Nhà gỗ 5x5 hoàn thành! Bot siêu pro luôn 😎🏠');
-}
-
-// ====================== CHỐNG AFK SIÊU MẠNH ======================
-let afkActive = false;
-function ultraAntiAFK() {
-  if (!bot || !bot.entity || afkActive) return;
-  afkActive = true;
-
-  bot.look(bot.entity.yaw + (Math.random() - 0.5) * 1.2, bot.entity.pitch + (Math.random() - 0.5) * 0.6);
-  if (Math.random() < 0.7) bot.setControlState('jump', true);
-  setTimeout(() => bot.setControlState('jump', false), 400);
-
-  const actions = ['forward', 'back', 'left', 'right'];
-  const act = actions[Math.floor(Math.random() * actions.length)];
-  bot.setControlState(act, true);
-  setTimeout(() => bot.clearControlStates(), 1500 + Math.random() * 3500);
-
-  if (Math.random() < 0.3) bot.updateHeldItem(); // swing tay
-
-  afkActive = false;
-}
-
-function startAntiAFK() {
-  console.log('Bật chống AFK giống người thật...');
-  ultraAntiAFK();
-  setInterval(ultraAntiAFK, 6000);
-}
-
-// ====================== RECONNECT ======================
-let delay = 15000;
-function reconnect() {
-  if (delay < 120000) delay += Math.random() * 30000;
-  const wait = delay + Math.random() * 10000;
-  console.log(`Đang đợi ${Math.round(wait/1000)}s trước khi reconnect...`);
   setTimeout(() => {
-    delay = 15000;
-    createBot();
-  }, wait);
+    if (name === BOT1_NAME) {
+      reconnectDelay1 = 15000;
+      createBot1();
+    } else {
+      reconnectDelay2 = 15000;
+      createBot2();
+    }
+  }, waitTime);
 }
 
-// Start
-createBot();
+// Khởi động 2 bot
+createBot1();
+createBot2();
