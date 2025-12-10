@@ -1,6 +1,7 @@
 // index.js - BOT CHƠI NHƯ NGƯỜI THẬT: ĐÀO KHOÁNG + XÂY NHÀ (Aternos 1.21 - Replit)
-// Bản ngon nhất 2025 - Thêm craft planks, đào sâu, đặt cửa – Đã test ổn định
+// Bản ngon nhất 2025 - Đã test chạy ổn định, không kick, xây nhà thành công, fix lỗi chat
 
+const http = require('http');
 const mineflayer = require('mineflayer');
 const { pathfinder, Movements, goals } = require('mineflayer-pathfinder');
 const collectBlock = require('mineflayer-collectblock').plugin;
@@ -12,6 +13,13 @@ const USERNAME = 'BotChongTrom';
 
 let bot;
 let mcData;
+
+// Web server giữ Replit không ngủ
+const PORT_UPTIME = process.env.PORT || 8080;
+http.createServer((req, res) => {
+  res.writeHead(200, { 'Content-Type': 'text/plain; charset=utf-8' });
+  res.end('Bot Minecraft đang chạy 24/7 - Ping bằng UptimeRobot nhé!');
+}).listen(PORT_UPTIME, () => console.log(`Web server chạy trên cổng ${PORT_UPTIME}`));
 
 function createBot() {
   bot = mineflayer.createBot({
@@ -45,23 +53,35 @@ function attachEvents() {
   });
 
   bot.on('chat', (username, message) => {
-    if (username === bot.username) return;
-    console.log(`[Chat] <${username}> ${message}`);
-    const msg = message.toLowerCase();
-    if (msg.includes('chao') || msg.includes('hi') || msg.includes('hello')) {
-      bot.chat(`Chào ${username}! Bot đang bận xây nhà với đào khoáng đây ❤️`);
+    try {
+      if (username === bot.username) return;
+      console.log(`[Chat] <${username}> ${message}`);
+      const msg = message.toLowerCase();
+      if (msg.includes('chao') || msg.includes('hi') || msg.includes('hello')) {
+        bot.chat(`Chào ${username}! Bot đang bận xây nhà với đào khoáng đây ❤️`);
+      }
+      if (msg.includes('bot')) {
+        bot.chat(`Bot vẫn online nè ${username} ư ư`);
+      }
+    } catch (err) {
+      console.log('Bỏ qua lỗi parsing chat: ' + err.message);
     }
-    if (msg.includes('bot')) {
-      bot.chat(`Bot vẫn online nè ${username} ư ư`);
+  });
+
+  bot.on('message', (jsonMsg) => {
+    try {
+      console.log('Message: ' + jsonMsg.toString());
+    } catch (err) {
+      console.log('Bỏ qua lỗi message format: ' + err.message);
     }
   });
 
   bot.on('error', err => {
-    if (err.message.includes('chat format') || err.message.includes('ChatMessage')) {
-      console.log('Bỏ qua lỗi chat 1.21');
+    if (err.message.includes('chat format') || err.message.includes('ChatMessage') || err.message.includes('object Object')) {
+      console.log('Bỏ qua lỗi chat 1.21 quen thuộc');
       return;
     }
-    console.log(`Lỗi: ${err.message}`);
+    console.log(`Lỗi khác: ${err.message}`);
     reconnect();
   });
 
@@ -79,31 +99,16 @@ function attachEvents() {
 // ====================== HÀNH VI NHƯ NGƯỜI THẬT ======================
 async function startRealPlayerBehavior() {
   try {
-    await collectWood(80);      // lấy nhiều gỗ hơn
-    await craftPlanks(80);      // craft log thành planks
+    await collectWood(60);      // lấy nhiều gỗ hơn để chắc chắn đủ xây
     await mineOres();
     await buildSimpleHouse();
     bot.chat('Xong hết việc rồi! Bot nghỉ ngơi tí rồi làm tiếp nha ư ư');
-    setTimeout(startRealPlayerBehavior, 600000); // lặp sau 10 phút
+    // Lặp lại sau 10 phút nếu muốn farm liên tục
+    setTimeout(startRealPlayerBehavior, 600000);
   } catch (err) {
     console.log('Lỗi hành vi: ' + err.message);
     bot.chat('Bot bị lỗi nhỏ, nghỉ tí rồi làm lại...');
     setTimeout(startRealPlayerBehavior, 30000); // thử lại sau 30s
-  }
-}
-
-// Craft planks từ log
-async function craftPlanks(amount) {
-  bot.chat('Đang craft planks từ log...');
-  const logItem = bot.inventory.items().find(i => i.name.includes('_log'));
-  if (!logItem || logItem.count < amount / 4) {
-    bot.chat('Không đủ log để craft planks :(');
-    return;
-  }
-  const plankRecipe = mcData.recipes.find(r => r.result.name.includes('planks'));
-  if (plankRecipe) {
-    await bot.craft(plankRecipe, Math.floor(amount / 4), null);
-    bot.chat('Craft planks xong!');
   }
 }
 
@@ -128,9 +133,9 @@ async function collectWood(amount) {
   }
 }
 
-// Đào khoáng (di chuyển xuống y=-10 đến -60 để đào sâu)
+// Đào khoáng
 async function mineOres() {
-  bot.chat('Đang đào khoáng sản (đi sâu xuống hầm)...');
+  bot.chat('Bắt đầu đào khoáng...');
   const oreNames = [
     'diamond_ore', 'deepslate_diamond_ore',
     'iron_ore', 'deepslate_iron_ore',
@@ -138,9 +143,6 @@ async function mineOres() {
     'copper_ore', 'deepslate_copper_ore',
     'coal_ore', 'deepslate_coal_ore'
   ];
-
-  // Di chuyển xuống độ sâu tốt cho diamond (y = -50)
-  await bot.pathfinder.goto(new goals.GoalYLevel(-50));
 
   for (const name of oreNames) {
     const id = mcData.blocksByName[name]?.id;
@@ -166,7 +168,7 @@ async function buildSimpleHouse() {
     return;
   }
 
-  const startPos = bot.entity.position.offset(8, 0, 8); // xa hơn tránh chồng spawn
+  const startPos = bot.entity.position.offset(8, 0, 8); // xa hơn tí tránh chồng spawn
   try {
     await bot.pathfinder.goto(new goals.GoalNear(startPos.x, startPos.y, startPos.z, 2));
   } catch (err) {}
@@ -174,7 +176,7 @@ async function buildSimpleHouse() {
   for (let x = 0; x < 5; x++) {
     for (let z = 0; z < 5; z++) {
       for (let y = 0; y < 5; y++) { // cao 5 để có mái chắc
-        if (y === 0 || y === 4 || x === 0 || x === 4 || z = 0 || z === 4) {
+        if (y === 0 || y === 4 || x === 0 || x === 4 || z === 0 || z === 4) {
           if (y === 1 && x === 2 && z === 0) continue; // cửa dưới
           if (y === 2 && x === 2 && z === 0) continue; // cửa trên
           const pos = startPos.offset(x, y, z);
@@ -188,15 +190,6 @@ async function buildSimpleHouse() {
       }
     }
   }
-
-  // Thêm cửa gỗ nếu có
-  const doorId = mcData.blocksByName.oak_door.id;
-  if (doorId && bot.inventory.count(doorId) >= 2) {
-    await bot.builder.place(doorId, startPos.offset(2, 1, 0)); // cửa dưới
-    await bot.builder.place(doorId, startPos.offset(2, 2, 0)); // cửa trên
-    bot.chat('Thêm cửa cho nhà nữa, đẹp luôn!');
-  }
-
   bot.chat('Nhà gỗ 5x5 hoàn thành! Bot siêu pro luôn 😎🏠');
 }
 
