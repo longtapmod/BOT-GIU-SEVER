@@ -1,6 +1,19 @@
-"dependencies": {
-  "mineflayer": "^4.33.0",
-  "mineflayer-pathfinder": "^2.0.0",
-  "mineflayer-collectblock": "^1.4.1",
-  "mineflayer-builder": "^0.0.4"
+{
+  "name": "aternos-mineflayer-bot-pro",
+  "version": "1.0.0",
+  "description": "Bot Minecraft chơi như người thật cho Aternos - Replit",
+  "main": "index.js",
+  "scripts": {
+    "start": "node index.js"
+  },
+  "dependencies": {
+    "mineflayer": "^4.22.0",
+    "mineflayer-pathfinder": "^2.0.0",
+    "mineflayer-collectblock": "^1.4.1",
+    "mineflayer-builder": "^0.0.4",
+    "minecraft-data": "^3.70.0"
+  },
+  "engines": {
+    "node": ">=18.x"
+  }
 }
