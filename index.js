@@ -1,31 +1,29 @@
-// index.js - BOT MINECRAFT 24/7 ATERNOS 1.21 (Replit)
-// Đã fix hoàn toàn lỗi chat format + throttle
+// index.js - BOT 24/7 ATERNOS 1.21 - KHÔNG BAO GIỜ BỊ KICK (Replit 2025)
 const http = require('http');
 const mineflayer = require('mineflayer');
 
-// ====================== CẤU HÌNH (CHỈ THAY 3 DÒNG NÀY) ======================
+// ====================== CẤU HÌNH ======================
 const HOST = 'dailongsever111.aternos.me';
 const PORT = 14483;
 const USERNAME = 'BotChongTrom';
-// =========================================================================
+// ===================================================
 
-console.log(`\nĐang kết nối ${USERNAME} → ${HOST}:${PORT} (phiên bản 1.21)`);
+console.log(`Đang kết nối ${USERNAME} → ${HOST}:${PORT} (1.21)`);
 
-// Web server giữ Replit không ngủ
+// Web server giữ Replit awake
 const PORT_UPTIME = process.env.PORT || 8080;
 http.createServer((req, res) => {
-  res.writeHead(200, { 'Content-Type': 'text/plain; charset=utf-8' });
-  res.end('Bot Minecraft 1.21 đang chạy 24/7');
-}).listen(PORT_UPTIME, () => console.log(`Web server chạy trên cổng ${PORT_UPTIME}`));
+  res.writeHead(200, {'Content-Type': 'text/plain; charset=utf-8'});
+  res.end('Bot đang online 24/7 - Aternos + Replit');
+}).listen(PORT_UPTIME, () => console.log(`Web server trên cổng ${PORT_UPTIME}`));
 
-// Tạo bot
 let bot;
 function createBot() {
   bot = mineflayer.createBot({
     host: HOST,
     port: PORT,
     username: USERNAME,
-    version: '1.21',      // Đúng version server
+    version: '1.21',
     auth: 'offline'
   });
   attachEvents();
@@ -33,88 +31,78 @@ function createBot() {
 
 function attachEvents() {
   bot.once('spawn', () => {
-    console.log(`\nBot ${bot.username} đã vào server thành công! Bật chống AFK...`);
+    console.log(`\nBot ${bot.username} đã vào server! Bật chống AFK siêu mạnh...`);
     startAntiAFK();
   });
 
-  // Fix lỗi chat format 1.21: bắt và bỏ qua lỗi này
-  bot.on('error', (err) => {
-    if (err.message.includes('unknown chat format code') || 
-        err.message.includes('ChatMessage') || 
-        err.message.includes('fromNetwork')) {
-      console.log('Bỏ qua lỗi chat format 1.21 (bình thường, không ảnh hưởng)');
-      return;
-    }
-    console.log(`Lỗi thật: ${err.message}`);
-    reconnect();
-  });
-
-  // Chat trả lời (an toàn)
   bot.on('chat', (username, message) => {
     if (username === bot.username) return;
     console.log(`[Chat] <${username}> ${message}`);
     const msg = (message + '').toLowerCase();
-    if (msg.includes('chao') || msg.includes('hi') || msg.includes('hello')) {
-      bot.chat(`Chào ${username}! Bot vẫn online đây ❤️`);
-    }
-    if (msg === 'bot' || msg === 'ping') {
-      bot.chat(`Bot online ngon lành nè ${username} ư ư`);
-    }
+    if (msg.includes('chao') || msg.includes('hi')) bot.chat(`Chào ${username}! Bot online 24/7 đây ❤️`);
+    if (msg === 'ping') bot.chat(`Pong! Bot vẫn sống khỏe nha ${username} ~`);
   });
 
-  bot.on('kicked', (reason) => {
-    console.log(`Bị kick: ${JSON.stringify(reason)}`);
+  // Bỏ qua lỗi chat 1.21
+  bot.on('error', err => {
+    if (err.message.includes('chat format') || err.message.includes('ChatMessage')) {
+      console.log('Bỏ qua lỗi chat 1.21 (bình thường)');
+      return;
+    }
+    console.log(`Lỗi: ${err.message}`);
     reconnect();
   });
 
-  bot.on('end', () => {
-    console.log('Bot mất kết nối → reconnect với delay thông minh...');
-    reconnect();
-  });
+  bot.on('kicked', reason => { console.log(`Bị kick: ${JSON.stringify(reason)}`); reconnect(); });
+  bot.on('end', () => { console.log('Mất kết nối → reconnect...'); reconnect(); });
 }
 
-// ====================== CHỐNG AFK ======================
-let moving = false;
-function antiAFK() {
-  if (!bot?.entity || moving) return;
-  moving = true;
-  bot.look(bot.entity.yaw + 1.5, bot.entity.pitch);
-  setTimeout(() => bot.look(bot.entity.yaw - 3, bot.entity.pitch), 1000);
-  setTimeout(() => bot.look(bot.entity.yaw + 1.5, bot.entity.pitch), 2000);
+// ====================== CHỐNG AFK SIÊU MẠNH ======================
+let afkActive = false;
+function superAntiAFK() {
+  if (!bot.entity || afkActive) return;
+  afkActive = true;
+
+  const randomYaw = Math.random() * Math.PI * 2;
+  const randomPitch = (Math.random() - 0.5) * Math.PI * 0.4;
+  bot.look(randomYaw, randomPitch);
 
   bot.setControlState('jump', true);
   setTimeout(() => bot.setControlState('jump', false), 400);
 
-  const r = Math.floor(Math.random() * 4);
-  if (r === 0) bot.setControlState('forward', true);
-  if (r === 1) bot.setControlState('back', true);
-  if (r === 2) bot.setControlState('left', true);
-  if (r === 3) bot.setControlState('right', true);
+  const actions = ['forward', 'back', 'left', 'right'];
+  const action = actions[Math.floor(Math.random() * actions.length)];
+  bot.setControlState(action, true);
 
+  const moveTime = 1000 + Math.random() * 2000;
   setTimeout(() => {
     bot.clearControlStates();
-    moving = false;
-  }, 1500);
+    afkActive = false;
+  }, moveTime);
+
+  if (Math.random() < 0.3) {
+    bot.setControlState('sneak', true);
+    setTimeout(() => bot.setControlState('sneak', false), 1500);
+  }
 }
 
 function startAntiAFK() {
-  antiAFK();
-  setInterval(antiAFK, 28000);
+  console.log('Bật chế độ chống AFK siêu mạnh...');
+  superAntiAFK();
+  setInterval(superAntiAFK, 8000); // mỗi 8 giây
 }
 
-// ====================== RECONNECT THÔNG MINH CHỐNG THROTTLE ======================
-let reconnectDelay = 15000;
-
+// ====================== RECONNECT CHỐNG THROTTLE ======================
+let delay = 15000;
 function reconnect() {
-  if (reconnectDelay < 120000) reconnectDelay += Math.random() * 35000;
-  const wait = reconnectDelay + Math.random() * 15000;
-
-  console.log(`\nĐang đợi ${Math.round(wait/1000)} giây trước khi reconnect...`);
+  if (delay < 120000) delay += Math.random() * 30000;
+  const wait = delay + Math.random() * 10000;
+  console.log(`Đang đợi ${Math.round(wait/1000)}s trước khi reconnect...`);
   setTimeout(() => {
-    reconnectDelay = 15000; // reset khi thành công
+    delay = 15000;
     createBot();
   }, wait);
 }
 
-// Khởi động
+// Start
 createBot();
