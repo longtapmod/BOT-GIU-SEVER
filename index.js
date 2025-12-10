@@ -1,5 +1,5 @@
-// index.js - 2 BOT AFK ĐỨNG YÊN GIỮ SERVER ONLINE 24/7 (Aternos - Replit)
-// Bản đơn giản ổn định, không crash chat 1.21, chống AFK nhẹ (quay đầu + nhảy), reconnect thông minh
+// index.js - 2 BOT AFK ĐỨNG YÊN GIỮ SERVER ONLINE 24/7 (Aternos 1.21 - Replit)
+// Bản ổn định cho server 1.21, chống kick, reconnect tốt
 
 const http = require('http');
 const mineflayer = require('mineflayer');
@@ -8,10 +8,10 @@ const mineflayer = require('mineflayer');
 const HOST = 'dailongsever111.aternos.me';
 const PORT = 14483;
 const BOT1_NAME = 'BotChongTrom';
-const BOT2_NAME = 'Bot2ChongTrom'; // Tên bot 2 (thay nếu muốn)
+const BOT2_NAME = 'Bot2ChongTrom'; // Thay tên nếu muốn
 // ============================================================
 
-console.log(`\nĐang kết nối 2 bot → ${HOST}:${PORT} (1.20.4 - ổn định)`);
+console.log(`\nĐang kết nối 2 bot → ${HOST}:${PORT} (phiên bản 1.21)`);
 
 // Web server giữ Replit không ngủ
 const PORT_UPTIME = process.env.PORT || 5000;
@@ -28,7 +28,7 @@ function createBot1() {
     host: HOST,
     port: PORT,
     username: BOT1_NAME,
-    version: '1.20.4',  // Ổn định, không lỗi chat
+    version: '1.21',  // ĐÃ ĐỔI THÀNH 1.21
     auth: 'offline'
   });
   attachEvents(bot1, BOT1_NAME);
@@ -39,7 +39,7 @@ function createBot2() {
     host: HOST,
     port: PORT,
     username: BOT2_NAME,
-    version: '1.20.4',
+    version: '1.21',  // ĐÃ ĐỔI THÀNH 1.21
     auth: 'offline'
   });
   attachEvents(bot2, BOT2_NAME);
@@ -47,25 +47,26 @@ function createBot2() {
 
 function attachEvents(bot, name) {
   bot.once('spawn', () => {
-    console.log(`\nBot ${name} đã vào server! Bật chống AFK...`);
+    console.log(`\nBot ${name} đã vào server thành công! Bật chống AFK...`);
     startAntiAFK(bot);
   });
 
-  // Chat đơn giản (bỏ qua lỗi 1.21)
+  // Chat đơn giản
   bot.on('chat', (username, message) => {
     try {
       if (username === bot.username) return;
       console.log(`[Chat ${name}] <${username}> ${message}`);
       const msg = message.toLowerCase();
-      if (msg.includes('chao') || msg.includes('hi')) {
-        bot.chat(`Chào ${username}! ${name} vẫn online ❤️`);
+      if (msg.includes('chao') || msg.includes('hi') || msg.includes('hello')) {
+        bot.chat(`Chào ${username}! ${name} vẫn online nè ❤️`);
       }
-    } catch (err) {}
+    } catch (err) {} // Bỏ qua lỗi chat 1.21
   });
 
+  // Bỏ qua lỗi chat 1.21
   bot.on('error', err => {
-    if (err.message.includes('chat') || err.message.includes('format')) {
-      console.log(`Bỏ qua lỗi chat cho ${name}`);
+    if (err.message.includes('chat') || err.message.includes('format') || err.message.includes('object Object') || err.message.includes('framing')) {
+      console.log(`Bỏ qua lỗi chat 1.21 cho ${name}`);
       return;
     }
     console.log(`Lỗi ${name}: ${err.message}`);
@@ -83,48 +84,42 @@ function attachEvents(bot, name) {
   });
 }
 
-// ====================== CHỐNG AFK NHẸ (ĐỨNG YÊN + QUAY ĐẦU + NHẢY) ======================
+// ====================== CHỐNG AFK NHẸ ======================
 function startAntiAFK(bot) {
   setInterval(() => {
     if (!bot.entity) return;
 
-    // Quay đầu ngẫu nhiên
-    bot.look(bot.entity.yaw + Math.random() * 2 - 1, bot.entity.pitch + Math.random() * 0.5 - 0.25);
+    // Quay đầu nhẹ
+    bot.look(bot.entity.yaw + (Math.random() - 0.5) * 0.5, bot.entity.pitch);
 
-    // Nhảy nhẹ
+    // Nhảy
     bot.setControlState('jump', true);
     setTimeout(() => bot.setControlState('jump', false), 300);
 
-    // Di chuyển nhẹ
+    // Di chuyển ngắn
     const dir = ['forward', 'back', 'left', 'right'][Math.floor(Math.random() * 4)];
     bot.setControlState(dir, true);
-    setTimeout(() => bot.clearControlStates(), 800);
-  }, 25000); // Mỗi 25 giây - không quá lộ
+    setTimeout(() => bot.clearControlStates(), 600);
+  }, 30000); // Mỗi 30 giây
 }
 
 // ====================== RECONNECT THÔNG MINH ======================
-let reconnectDelay1 = 15000, reconnectDelay2 = 15000;
+let delay1 = 15000, delay2 = 15000;
 
 function reconnectBot(bot, name) {
-  const delay = (name === BOT1_NAME ? reconnectDelay1 : reconnectDelay2);
+  const delay = name === BOT1_NAME ? delay1 : delay2;
+  let wait = delay + Math.random() * 15000;
   if (delay < 120000) {
-    if (name === BOT1_NAME) reconnectDelay1 += Math.random() * 30000;
-    else reconnectDelay2 += Math.random() * 30000;
+    if (name === BOT1_NAME) delay1 += 20000;
+    else delay2 += 20000;
   }
-  const waitTime = delay + Math.random() * 10000;
-  console.log(`${name} đợi ${Math.round(waitTime/1000)}s reconnect...`);
-
+  console.log(`${name} đợi ${Math.round(wait/1000)}s reconnect...`);
   setTimeout(() => {
-    if (name === BOT1_NAME) {
-      reconnectDelay1 = 15000;
-      createBot1();
-    } else {
-      reconnectDelay2 = 15000;
-      createBot2();
-    }
-  }, waitTime);
+    if (name === BOT1_NAME) createBot1();
+    else createBot2();
+  }, wait);
 }
 
-// Khởi động 2 bot
+// Khởi động
 createBot1();
-createBot2();
+setTimeout(createBot2, 8000); // Bot2 vào sau 8s tránh throttle
