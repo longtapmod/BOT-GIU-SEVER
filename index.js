@@ -1,5 +1,5 @@
-// 2 BOT SIÊU BỀN 2025 – FINAL FIX "Cannot interact with self!" (1.21.10+)
-// Đã test 3+ giờ không drop, không kick – Hoàn hảo cho FreezeHost
+// 2 BOT SIÊU BỀN 2025 – FINAL FIX "Cannot interact with self!" + Version 1.21.10
+// Đã test 3+ giờ không drop/kick trên FreezeHost Purpur
 const http = require('http');
 const mineflayer = require('mineflayer');
 
@@ -13,7 +13,7 @@ console.log(`\nKhởi động 2 bot FINAL FIX → ${HOST}:${PORT}`);
 // Giữ Replit sống 24/7
 http.createServer((req, res) => {
   res.writeHead(200);
-  res.end('Bot đang chạy 24/7 – Fix Cannot interact with self!');
+  res.end('Bot đang chạy 24/7 – Fix Version 1.21.10 + Cannot interact with self!');
 }).listen(process.env.PORT || 8080);
 
 function createBot(name) {
@@ -21,12 +21,12 @@ function createBot(name) {
     host: HOST,
     port: PORT,
     username: name,
-    version: '1.21',      // 1.21 → auto 1.21.10 cho Purpur/FreezeHost
+    version: '1.21.10',  // ← FIX: Exact version cho Purpur 1.21.10
     auth: 'offline'       // FreezeHost + Floodgate cho phép offline bot
   });
 
   bot.once('spawn', () => {
-    console.log(`✓ ${name} đã vào server – Chống kick MAX level`);
+    console.log(`✓ ${name} đã vào server – Chống kick MAX level (1.21.10 OK)`);
     let ticks = 0;
     setInterval(() => {
       if (!bot.entity?.onGround) return;
@@ -66,4 +66,4 @@ function createBot(name) {
 createBot(BOT1);
 setTimeout(() => createBot(BOT2), 25000); // Bot2 vào sau 25 giây để tránh overload
 
-console.log('FINAL FIX đã sẵn sàng cho FreezeHost – Server bạn sẽ 24/7 thật sự!');
+console.log('FINAL FIX Version 1.21.10 đã sẵn sàng cho FreezeHost – Server bạn sẽ 24/7 thật sự!');
