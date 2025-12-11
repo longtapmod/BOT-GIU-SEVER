@@ -1,5 +1,5 @@
-// 2 BOT SIÊU BỀN 2025 – FINAL FIX "Cannot interact with self!" + Version 1.21.10
-// Đã test 3+ giờ không drop/kick trên FreezeHost Purpur
+// 2 BOT SIÊU BỀN 2025 – FINAL FIX "Cannot interact with self!" + Version 1.21.10 + Throttle
+// Delay reconnect 5-7 phút – Hoàn hảo cho Purpur/FreezeHost throttle
 const http = require('http');
 const mineflayer = require('mineflayer');
 
@@ -13,7 +13,7 @@ console.log(`\nKhởi động 2 bot FINAL FIX → ${HOST}:${PORT}`);
 // Giữ Replit sống 24/7
 http.createServer((req, res) => {
   res.writeHead(200);
-  res.end('Bot đang chạy 24/7 – Fix Version 1.21.10 + Cannot interact with self!');
+  res.end('Bot đang chạy 24/7 – Fix Throttle + Version 1.21.10 + Cannot interact!');
 }).listen(process.env.PORT || 8080);
 
 function createBot(name) {
@@ -21,39 +21,39 @@ function createBot(name) {
     host: HOST,
     port: PORT,
     username: name,
-    version: '1.21.10',  // ← FIX: Exact version cho Purpur 1.21.10
-    auth: 'offline'       // FreezeHost + Floodgate cho phép offline bot
+    version: '1.21.10',  // Exact version cho Purpur 1.21.10
+    auth: 'offline'       // FreezeHost + Floodgate cho phép
   });
 
   bot.once('spawn', () => {
-    console.log(`✓ ${name} đã vào server – Chống kick MAX level (1.21.10 OK)`);
+    console.log(`✓ ${name} đã vào server – Chống kick MAX level (1.21.10 + Throttle OK)`);
     let ticks = 0;
     setInterval(() => {
       if (!bot.entity?.onGround) return;
       ticks++;
       // Quay đầu mạnh
       bot.look(Math.random() * Math.PI * 2, (Math.random() - 0.5) * 0.8, true);
-      // Jump nhẹ – an toàn, không flying
+      // Jump nhẹ – an toàn
       bot.setControlState('jump', true);
       setTimeout(() => bot.setControlState('jump', false), 200);
       // Di chuyển ngắn random
       const dir = ['forward','back','left','right'][Math.floor(Math.random()*4)];
       bot.setControlState(dir, true);
       setTimeout(() => bot.clearControlStates(), 700 + Math.random() * 500);
-      // Vung tay (an toàn 100% – không activateItem)
+      // Vung tay (an toàn 100%)
       bot.swingArm();
-      // Chat siêu kín đáo (mỗi ~12-18 phút)
+      // Chat siêu kín (mỗi ~12-18 phút)
       if (ticks % 28 === 0) {
         const msg = ['.', '..', 'ok', 'ping'][Math.floor(Math.random()*4)];
         try { bot.chat(msg); } catch(e) {}
       }
-    }, 24000); // 24 giây/lần – tối ưu anti-AFK
+    }, 24000); // 24 giây/lần – anti-AFK tối ưu
   });
 
-  // Reconnect thông minh (tránh spam khi hibernation wake up)
+  // Reconnect FIX THROTTLE: 5-7 phút random (300-420s) – Vượt Purpur 4000 ticks
   const reconnect = () => {
-    const wait = 25000 + Math.random() * 20000;
-    console.log(`${name} disconnect → reconnect sau ${Math.round(wait/1000)}s`);
+    const wait = 300000 + Math.random() * 120000;  // 5 phút + random 0-2 phút
+    console.log(`${name} disconnect → reconnect sau ${Math.round(wait/1000/60)} phút (throttle fix)`);
     setTimeout(() => createBot(name), wait);
   };
 
@@ -64,6 +64,6 @@ function createBot(name) {
 
 // Khởi động 2 bot
 createBot(BOT1);
-setTimeout(() => createBot(BOT2), 25000); // Bot2 vào sau 25 giây để tránh overload
+setTimeout(() => createBot(BOT2), 300000); // Bot2 vào sau 5 phút để tránh throttle
 
-console.log('FINAL FIX Version 1.21.10 đã sẵn sàng cho FreezeHost – Server bạn sẽ 24/7 thật sự!');
+console.log('FINAL FIX Throttle đã sẵn sàng cho FreezeHost – Server bạn sẽ 24/7 thật sự!');
